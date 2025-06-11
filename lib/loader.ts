@@ -3,7 +3,7 @@ export type ScraperFunction = (...args: string[]) => Promise<any>;
 export async function getScraper(scraperPath: string): Promise<ScraperFunction | null> {
   try {
     const [moduleName, methodName] = scraperPath.split(".");
-    const mod = await import(`@/lib/${moduleName}`);
+    const mod = await import(`@/data/${moduleName}`);
 
     const funcs: Record<string, Function> = {};
 
