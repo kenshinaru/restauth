@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { ENDPOINT_CATEGORIES } from "@/config/endpoints"
 import { checkIpRateLimit } from "@/lib/limiter"
-import { getScraper } from "@/lib/scraper-loader"
+import { getScraper } from "@/lib/loader"
 import { CONFIG } from "@/config/setting"
 import { trackRequest } from "@/lib/analytics"
 import { validateApiKey, incrementApiUsage, hasReachedDailyLimit } from "@/lib/auth"
