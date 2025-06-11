@@ -116,7 +116,7 @@ export default function LoginPage() {
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && <div className="bg-red-50 text-red-500 px-4 py-2 rounded-md text-sm">{error}</div>}
+            {error && <div className="bg-black text-red-500 px-4 py-2 rounded-md text-sm">{error}</div>}
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input id="username" name="username" placeholder="Enter your username" required />
