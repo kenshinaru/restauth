@@ -3,62 +3,40 @@ import * as cheerio from 'cheerio';
 const BASE_URL = "https://api.genius.com";
 const ACCESS_TOKEN = "5A3jmNtHiCmWSmKZYfoM_T5seFaHnZiTwzIxCsHJqF7JXauBIDLocGmo9wFFzLNX";
 
-// Fungsi pencarian lirik
-async function searchLyric(query) {
+async function getLyricsByQuery(query) {
   try {
-    const response = await fetch(`${BASE_URL}/search?access_token=${ACCESS_TOKEN}&q=${encodeURIComponent(query)}`);
-    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+    const res = await fetch(`${BASE_URL}/search?q=${encodeURIComponent(query)}`, {
+      headers: { Authorization: `Bearer ${ACCESS_TOKEN}` }
+    });
+    const json = await res.json();
+    const hit = json.response.hits?.[0];
+    if (!hit) return { status: false, message: "Lagu tidak ditemukan." };
 
-    const result = await response.json();
-    const hits = result.response.hits;
+    const { title, artist_names: artist, url } = hit.result;
+    const htmlRes = await fetch("https://files.xianqiao.wang/" + url);
+    const html = await htmlRes.text();
 
-    return {
-      status: true,
-      data: hits.length > 0
-        ? hits.map(hit => ({
-            title: hit.result.title,
-            url: hit.result.url,
-            artist: hit.result.artist_names
-          }))
-        : []
-    };
-  } catch (error) {
-    console.error('Error during search:', error);
-    return {
-      status: false,
-      data: []
-    };
-  }
-}
-
-// Fungsi ambil lirik dari halaman
-async function getLyrics(url) {
-  try {
-    const response = await fetch("https://files.xianqiao.wang/" + url);
-    const html = await response.text();
     const $ = cheerio.load(html);
-
     let lyrics = '';
-    $('div[class^="Lyrics__Container"]').each((_, elem) => {
-      if ($(elem).text().length !== 0) {
-        const snippet = $(elem).html()
-          .replace(/<br\s*\/?>/g, '\n')
-          .replace(/<(?!\s*br\s*\/?)[^>]+>/gi, '');
-        lyrics += $('<textarea/>').html(snippet).text().trim() + '\n\n';
-      }
+    $('div[class^="Lyrics__Container"]').each((_, el) => {
+      const raw = $(el).html()
+        .replace(/<br\s*\/?>/g, '\n')
+        .replace(/<(?!br)[^>]+>/g, '');
+      lyrics += $('<textarea>').html(raw).text().trim() + '\n\n';
     });
 
     return {
       status: true,
-      data: lyrics.trim()
+      data: {
+        title,
+        artist,
+        url,
+        lyrics: lyrics.trim()
+      }
     };
-  } catch (error) {
-    console.error('Error while scraping lyrics:', error);
-    return {
-      status: false,
-      data: ''
-    };
+  } catch (err) {
+    return { status: false, message: err.message };
   }
 }
 
-export default { searchLyric, getLyrics };
+export default getLyricsByQuery
