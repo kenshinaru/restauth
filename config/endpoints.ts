@@ -209,14 +209,7 @@ export const ENDPOINT_CATEGORIES: CategoryConfig[] = [
         "path": "/lyric",
         "params": ["q"],
         "method": "get",
-        "execute": "genius.searchLyric"
-      },
-      {
-        "name": "Lyric Detail",
-        "path": "/lyric-detail",
-        "params": ["url"],
-        "method": "get",
-        "execute": "genius.getLyrics"
+        "execute": "genius"
       },
       {
         "name": "SoundCloud Downloader",
