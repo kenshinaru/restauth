@@ -16,7 +16,19 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Copy, Heart, Play, Activity, Gauge, Globe, ChevronDown, ChevronRight, Loader2, Lock } from "lucide-react"
+import {
+  Copy,
+  Heart,
+  Play,
+  Activity,
+  Gauge,
+  Globe,
+  ChevronDown,
+  ChevronRight,
+  Loader2,
+  Lock,
+  Unlock,
+} from "lucide-react"
 import { Separator } from "@/components/ui/separator"
 import { CONFIG } from "@/config/setting"
 import { ENDPOINT_CATEGORIES, type EndpointConfig } from "@/config/endpoints"
@@ -38,7 +50,6 @@ export default function HomePage() {
   const [tempApiKey, setTempApiKey] = useState("")
 
   const baseUrl = CONFIG.getBaseUrl()
-
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -226,10 +237,14 @@ export default function HomePage() {
               </Badge>
             </Link>
             <Badge
-              className="bg-green-500/10 text-green-400 border-green-500/20 text-xs cursor-pointer hover:bg-green-500/20"
+              className={`${
+                apiKey
+                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                  : "bg-red-500/10 text-red-400 border-red-500/20"
+              } text-xs cursor-pointer hover:opacity-80`}
               onClick={() => setShowApiKeyDialog(true)}
             >
-              <Lock className="h-3 w-3 mr-1" />
+              {apiKey ? <Lock className="h-3 w-3 mr-1" /> : <Unlock className="h-3 w-3 mr-1" />}
               Apikey
             </Badge>
             <Link href="/stats" passHref>
