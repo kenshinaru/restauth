@@ -230,7 +230,7 @@ export default function HomePage() {
               onClick={() => setShowApiKeyDialog(true)}
             >
               <Lock className="h-3 w-3 mr-1" />
-              Authentication
+              Apikey
             </Badge>
             <Link href="/stats" passHref>
               <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20 text-xs">
