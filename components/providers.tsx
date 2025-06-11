@@ -13,7 +13,6 @@ export function Providers({ children }: ProvidersProps) {
     <SessionProvider>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
         {children}
-        <Toaster />
       </ThemeProvider>
     </SessionProvider>
   )
