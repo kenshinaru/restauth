@@ -1,36 +1,31 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
 import "./globals.css"
-import { CONFIG } from "@/config/setting"
+import AuthSessionProvider from "@/components/session-provider"
+import { ThemeProvider } from "@/components/theme-provider"
+import { Inter } from "next/font/google"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: CONFIG.APP.TITLE,
-  description: CONFIG.APP.DESCRIPTION,
-  icons: {
-    icon: "/favicon.ico",
-  },
-  keywords: ["api", "documentation", "tiktok", "downloader", "social media"],
-  authors: [{ name: CONFIG.API.CREATOR }],
-  openGraph: {
-    title: CONFIG.APP.TITLE,
-    description: CONFIG.APP.DESCRIPTION,
-    type: "website",
-  },
-    generator: 'v0.dev'
+  title: "v0 App",
+  description: "Created with v0",
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body className={inter.className}>
-        {children}
+        <AuthSessionProvider>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            {children}
+          </ThemeProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   )
