@@ -2,8 +2,19 @@ import { type NextRequest, NextResponse } from "next/server"
 import { getToken } from "next-auth/jwt"
 
 export async function middleware(request: NextRequest) {
-  // Get the pathname
   const path = request.nextUrl.pathname
+
+  // Skip middleware for API routes, static files, and auth pages
+  if (
+    path.startsWith("/api/") ||
+    path.startsWith("/_next/") ||
+    path.startsWith("/favicon.ico") ||
+    path === "/login" ||
+    path === "/register" ||
+    path === "/"
+  ) {
+    return NextResponse.next()
+  }
 
   // Protected routes that require authentication
   const protectedRoutes = ["/playground", "/profile", "/account", "/dashboard"]
@@ -59,11 +70,13 @@ export async function middleware(request: NextRequest) {
 // Configure which paths the middleware should run on
 export const config = {
   matcher: [
-    "/playground/:path*",
-    "/profile",
-    "/account",
-    "/dashboard",
-    // Exclude API routes and static files
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
     "/((?!api|_next/static|_next/image|favicon.ico).*)",
   ],
 }

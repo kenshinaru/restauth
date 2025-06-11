@@ -24,6 +24,7 @@ export default function LoginPage() {
   // Redirect if already authenticated
   useEffect(() => {
     if (status === "authenticated" && session) {
+      console.log("User authenticated, redirecting to:", callbackUrl)
       router.push(callbackUrl)
     }
   }, [status, session, router, callbackUrl])
@@ -32,6 +33,7 @@ export default function LoginPage() {
   useEffect(() => {
     const error = searchParams.get("error")
     if (error) {
+      console.error("NextAuth error:", error)
       setError("Authentication failed. Please try again.")
     }
   }, [searchParams])
@@ -42,16 +44,30 @@ export default function LoginPage() {
     setError(null)
 
     const formData = new FormData(event.currentTarget)
+    const username = formData.get("username") as string
+    const password = formData.get("password") as string
 
     try {
+      console.log("Attempting login with NextAuth credentials...")
+
       // Try NextAuth credentials first
       const result = await signIn("credentials", {
-        username: formData.get("username") as string,
-        password: formData.get("password") as string,
+        username,
+        password,
         redirect: false,
       })
 
-      if (result?.error) {
+      console.log("NextAuth result:", result)
+
+      if (result?.ok && !result?.error) {
+        console.log("NextAuth login successful, redirecting...")
+        // Wait a bit for session to be established
+        setTimeout(() => {
+          router.push(callbackUrl)
+        }, 100)
+      } else {
+        console.log("NextAuth failed, trying custom API...")
+
         // If NextAuth fails, try the original API
         const response = await fetch("/api/auth/login", {
           method: "POST",
@@ -59,8 +75,8 @@ export default function LoginPage() {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            username: formData.get("username"),
-            password: formData.get("password"),
+            username,
+            password,
           }),
         })
 
@@ -70,13 +86,12 @@ export default function LoginPage() {
           throw new Error(data.message || "Login failed")
         }
 
+        console.log("Custom API login successful, redirecting...")
         // For original API login, redirect manually
-        router.push(callbackUrl)
-      } else if (result?.ok) {
-        // NextAuth success
         router.push(callbackUrl)
       }
     } catch (err) {
+      console.error("Login error:", err)
       setError(err instanceof Error ? err.message : "Login failed")
     } finally {
       setIsLoading(false)
@@ -88,19 +103,17 @@ export default function LoginPage() {
     setError(null)
 
     try {
+      console.log(`Attempting ${provider} login...`)
+
       const result = await signIn(provider, {
         callbackUrl,
-        redirect: false,
+        redirect: true, // Let NextAuth handle the redirect
       })
 
-      if (result?.error) {
-        setError(`${provider} login failed. Please try again.`)
-      } else if (result?.url) {
-        router.push(result.url)
-      }
+      console.log(`${provider} login result:`, result)
     } catch (err) {
+      console.error(`${provider} login error:`, err)
       setError(`${provider} login failed. Please try again.`)
-    } finally {
       setSocialLoading(null)
     }
   }
@@ -109,9 +122,21 @@ export default function LoginPage() {
   if (status === "loading") {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black px-4">
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 text-white">
           <Loader2 className="h-4 w-4 animate-spin" />
           <span>Loading...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Don't render login form if already authenticated
+  if (status === "authenticated") {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black px-4">
+        <div className="flex items-center space-x-2 text-white">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Redirecting...</span>
         </div>
       </div>
     )

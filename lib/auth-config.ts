@@ -41,6 +41,7 @@ export const authOptions: NextAuthOptions = {
             apiKey: user.apiKey,
           }
         } catch (error) {
+          console.error("Credentials auth error:", error)
           return null
         }
       },
@@ -57,7 +58,7 @@ export const authOptions: NextAuthOptions = {
 
           if (!existingUser) {
             // Create new user for social login
-            const { registerUser, generateApiKey } = await import("./auth")
+            const { generateApiKey } = await import("./auth")
 
             const userData = {
               name: user.name || "",
@@ -135,6 +136,19 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
   },
   secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === "development",
 }
