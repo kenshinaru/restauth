@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getUserFromSession } from "@/lib/auth"
-import Payment from "@/lib/payment"
+import Payment from "@/data/payment"
 import { CONFIG } from "@/config/setting"
 
 export async function GET(request: Request) {
