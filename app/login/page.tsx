@@ -1,7 +1,6 @@
 "use client"
 import type React from "react"
 import { useState } from "react"
-import { signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -54,9 +53,9 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    await signIn(provider, {
+    /*await signIn(provider, {
       callbackUrl: "/playground",
-    })
+    })*/
   }
   
 
