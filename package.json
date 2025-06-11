@@ -61,6 +61,7 @@
     "moment-timezone": "latest",
     "mongodb": "latest",
     "next": "15.2.4",
+    "next-auth": "latest",
     "next-themes": "latest",
     "nodemailer": "latest",
     "path": "latest",
