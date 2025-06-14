@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { getUserFromSession } from "@/lib/auth"
 import { getUsersCollection, getDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
-import { PRICING } from "@/config/pricing"
+import { PRICING } from "@/config/pricing" 
 
 export async function POST(request: Request) {
   try {
@@ -16,15 +16,16 @@ export async function POST(request: Request) {
     const body = await request.json()
     console.log("[Payment Complete] Request body:", body)
 
-    const { userId, plan, paymentToken, transactionTime } = body
+    // The 'plan' here refers to the plan's 'key' (e.g., "phoenix", "dragon")
+    const { userId, plan: planKey, paymentToken, transactionTime } = body
 
     // Validate required fields
-    if (!userId || !plan || !paymentToken) {
-      console.error("[Payment Complete] Missing fields:", { userId, plan, paymentToken })
+    if (!userId || !planKey || !paymentToken) {
+      console.error("[Payment Complete] Missing fields:", { userId, planKey, paymentToken })
       return NextResponse.json(
         {
           error: "Missing required fields",
-          details: { userId: !!userId, plan: !!plan, paymentToken: !!paymentToken },
+          details: { userId: !!userId, planKey: !!planKey, paymentToken: !!paymentToken },
         },
         { status: 400 },
       )
@@ -40,31 +41,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Get plan configuration
-    const planConfig = PRICING.LIST[plan as keyof typeof PRICING.LIST]
+    // Get plan configuration from the array
+    const planConfig = PRICING.LIST.find((p) => p.key === planKey)
     if (!planConfig) {
-      console.error("[Payment Complete] Invalid plan:", plan)
+      console.error("[Payment Complete] Invalid plan key:", planKey)
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 })
     }
 
-    // Calculate expiration date
+    // Calculate expiration date using days from planConfig
     const now = new Date()
     const expirationDate = new Date(now.getTime() + planConfig.days * 24 * 60 * 60 * 1000)
 
     console.log("[Payment Complete] Updating user:", {
       userId,
-      plan,
+      planKey,
       limit: planConfig.limit,
       expirationDate: expirationDate.toISOString(),
     })
 
-    // Update user in database
     const users = await getUsersCollection()
     const updateData: any = {
       premium: true,
       expired: expirationDate.getTime(),
-      limit: planConfig.limit, 
-      usage: 0,
+      limit: planConfig.limit,
+      usage: 0, 
       updatedAt: now,
     }
 
@@ -80,13 +80,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Failed to update user" }, { status: 500 })
     }
 
-    // Log transaction in database
     const db = await getDatabase()
     const transactions = db.collection("transactions")
     await transactions.insertOne({
       userId: new ObjectId(userId),
-      plan,
-      planName: planConfig.name,
+      planKey, 
+      planName: planConfig.name, 
       durationDays: planConfig.days,
       paymentToken,
       amount: planConfig.price,
@@ -97,12 +96,12 @@ export async function POST(request: Request) {
       createdAt: now,
     })
 
-    console.log("[Payment Complete] Success:", { userId, plan, limit: planConfig.limit })
+    console.log("[Payment Complete] Success:", { userId, planKey, limit: planConfig.limit })
 
     return NextResponse.json({
       status: true,
       message: "Plan updated successfully",
-      plan,
+      planKey,
       planName: planConfig.name,
       limit: planConfig.limit,
       unlimited: planConfig.unlimited,
