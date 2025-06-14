@@ -10,6 +10,7 @@ import { Footer } from "@/components/footer"
 import { Copy, CircleCheck, Crown, Zap, TriangleAlert, Plus, Minus } from "lucide-react"
 import Image from "next/image"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { PRICING } from "@/config/pricing" 
 
 interface User {
   _id: string
@@ -43,16 +44,11 @@ export default function DashboardPage() {
     Record<string, Record<string, { type: "success" | "error" | null; message: string }>>
   >({})
 
-  const planOptions = [
-    { label: "Phoenix (1 Day)", value: "1" },
-    { label: "Phoenix Plus (3 Days)", value: "3" },
-    { label: "Phoenix Pro (7 Days)", value: "7" },
-    { label: "Dragon (14 Days)", value: "14" },
-    { label: "Dragon Plus (30 Days)", value: "30" },
-    { label: "Griffin (60 Days)", value: "60" },
-    { label: "Titan (90 Days)", value: "90" },
-    { label: "Kraken (365 Days)", value: "365" },
-  ]
+  // Update planOptions to use the new PRICING.LIST array
+  const planOptions = PRICING.LIST.map((plan) => ({
+    label: plan.name,
+    value: plan.key, // Use the plan key as the value
+  }))
 
   useEffect(() => {
     fetchUsers()
@@ -240,7 +236,7 @@ export default function DashboardPage() {
     }
   }
 
-  const handleUpgradeUser = async (userId: string, days: number) => {
+  const handleUpgradeUser = async (userId: string, planKey: string) => {
     setUpgrading(true)
     setStatusMessages({
       ...statusMessages,
@@ -250,22 +246,34 @@ export default function DashboardPage() {
       },
     })
 
+    const selectedPlan = PRICING.LIST.find((p) => p.key === planKey)
+    if (!selectedPlan) {
+      setStatusMessages({
+        ...statusMessages,
+        [userId]: {
+          ...statusMessages[userId],
+          plan: { type: "error", message: "Selected plan not found" },
+        },
+      })
+      setUpgrading(false)
+      return
+    }
+
     try {
       const response = await fetch("/api/admin/upgrade", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId, days }),
+        body: JSON.stringify({ userId, days: selectedPlan.days }), // Pass the days from the selected plan
       })
 
       if (response.ok) {
         fetchUsers()
         setSelectedPlan("")
-        const planName = planOptions.find((p) => p.value === days.toString())?.label || `${days} days`
         setStatusMessages({
           ...statusMessages,
           [userId]: {
             ...statusMessages[userId],
-            plan: { type: "success", message: `Upgraded to ${planName}` },
+            plan: { type: "success", message: `Upgraded to ${selectedPlan.name}` },
           },
         })
       } else {
@@ -303,25 +311,34 @@ export default function DashboardPage() {
     }
 
     const daysLeft = Math.ceil((user.expired - Date.now()) / (1000 * 60 * 60 * 24))
-    const isUnlimited = user.limit >= 999999
 
-    if (daysLeft >= 365) {
-      return (
-        <Badge className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20 flex items-center gap-1">
-          <Crown className="w-3 h-3" />
-          Kraken ({daysLeft} days)
-        </Badge>
-      )
-    } else if (isUnlimited) {
-      return (
-        <Badge className="bg-purple-500/10 text-purple-400 border-purple-500/20 flex items-center gap-1">
-          <Zap className="w-3 h-3" />
-          Pro ({daysLeft} days)
+    // Find the plan that matches the user's current premium status (by duration or limit if possible)
+    // This is a simplified mapping. A more robust solution might store the plan key on the user object.
+    const userPlan = PRICING.LIST.find(
+      (plan) => plan.days === daysLeft || (plan.limit === user.limit && plan.unlimited === user.premium),
+    )
+
+    let badgeContent
+    if (userPlan) {
+      let icon = null
+      if (userPlan.key === "celestial" || userPlan.key === "immortal") {
+        icon = <Crown className="w-3 h-3" />
+      } else if (userPlan.key === "leviathan") {
+        icon = <Zap className="w-3 h-3" />
+      }
+      badgeContent = (
+        <Badge className="bg-green-500/10 text-green-400 border-green-500/20 flex items-center gap-1">
+          {icon}
+          {userPlan.name} ({daysLeft} days)
         </Badge>
       )
     } else {
-      return <Badge className="bg-green-500/10 text-green-400 border-green-500/20">Premium ({daysLeft} days)</Badge>
+      // Fallback if no specific plan matches, or for older premium users
+      badgeContent = (
+        <Badge className="bg-green-500/10 text-green-400 border-green-500/20">Premium ({daysLeft} days)</Badge>
+      )
     }
+    return badgeContent
   }
 
   return (
@@ -531,7 +548,7 @@ export default function DashboardPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => selectedPlan && handleUpgradeUser(user._id, Number.parseInt(selectedPlan))}
+                          onClick={() => selectedPlan && handleUpgradeUser(user._id, selectedPlan)}
                           disabled={!selectedPlan || upgrading}
                           className="h-8 border-white/10 text-gray-300 hover:bg-black hover:text-white text-xs"
                         >
