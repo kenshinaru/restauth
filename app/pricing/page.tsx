@@ -23,54 +23,14 @@ import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { PRICING } from "@/config/pricing"
 
-// Enhanced plan configurations with features
-const PLAN_FEATURES = {
-  "1": ["1,000 API Requests", "All Endpoints Access", "Custom API Key", "Email Support"],
-  "3": ["3,000 API Requests", "All Endpoints Access", "Custom API Key", "Email Support"],
-  "7": ["5,000 API Requests", "All Endpoints Access", "Custom API Key", "Priority Support"],
-  "14": ["10,000 API Requests", "All Endpoints Access", "Custom API Key", "Priority Support"],
-  "30": ["20,000 API Requests", "All Endpoints Access", "Custom API Key", "Priority Support", "Analytics Dashboard"],
-  "60": [
-    "Unlimited API Requests",
-    "All Endpoints Access",
-    "Custom API Key",
-    "Priority Support",
-    "Analytics Dashboard",
-    "Pro Badge",
-  ],
-  "90": [
-    "Unlimited API Requests",
-    "All Endpoints Access",
-    "Custom API Key",
-    "Priority Support",
-    "Analytics Dashboard",
-    "SLA Guarantee",
-    "Pro Badge",
-  ],
-  "365": [
-    "Unlimited API Requests",
-    "All Endpoints Access",
-    "Custom API Key",
-    "24/7 Support",
-    "Analytics Dashboard",
-    "SLA Guarantee",
-    "Dedicated Support",
-    "Elite Badge",
-  ],
-}
 
-const POPULAR_PLANS = ["7", "60"]
-
-type PlanType = keyof typeof PRICING.LIST
-
-interface PaymentStatus {
-  state: "PENDING" | "SUCCESS"
-  payment_type: string
-  id: string
-  total_price: string
+type PlanType = string 
+type PaymentStatus = {
+  state: string
   transaction_time: string
   planUpdated?: boolean
 }
+
 
 export default function PricingPage() {
   const router = useRouter()
@@ -86,6 +46,10 @@ export default function PricingPage() {
   const [countdown, setCountdown] = useState<number | null>(null)
   const [paymentStartTime, setPaymentStartTime] = useState<number | null>(null)
   const [confirmPlan, setConfirmPlan] = useState<PlanType | null>(null)
+
+  // Find the selected plan object from the PRICING.LIST array
+  const selectedPlanObject = selectedPlan ? PRICING.LIST.find((p) => p.key === selectedPlan) : null
+  const confirmPlanObject = confirmPlan ? PRICING.LIST.find((p) => p.key === confirmPlan) : null
 
   // Check user authentication
   useEffect(() => {
@@ -114,7 +78,11 @@ export default function PricingPage() {
 
   // Initialize payment
   const initializePayment = async (planKey: PlanType) => {
-    const plan = PRICING.LIST[planKey]
+    const plan = PRICING.LIST.find((p) => p.key === planKey)
+    if (!plan) {
+      setError("Selected plan not found.")
+      return
+    }
     setLoading(true)
     setError("")
 
@@ -189,10 +157,17 @@ export default function PricingPage() {
   const completePayment = async (paymentToken: string, transactionTime: string) => {
     if (!selectedPlan || !user) return
 
+    const plan = PRICING.LIST.find((p) => p.key === selectedPlan)
+    if (!plan) {
+      setError("Selected plan not found during completion.")
+      return
+    }
+
     try {
       console.log("[Payment Complete] Sending request:", {
         userId: user._id || user.id,
-        plan: selectedPlan,
+        plan: selectedPlan, // Send the plan key
+        days: plan.days, // Send the days for the backend
         paymentToken,
         transactionTime,
       })
@@ -203,6 +178,7 @@ export default function PricingPage() {
         body: JSON.stringify({
           userId: user._id || user.id,
           plan: selectedPlan,
+          days: plan.days, // Pass days to the backend
           paymentToken,
           transactionTime,
         }),
@@ -270,7 +246,10 @@ export default function PricingPage() {
     }
   }, [statusCheckInterval])
 
-  const getPricePerDay = (price: number, days: number) => Math.round(price / days)
+  const getPricePerDay = (price: number, days: number) => {
+    if (days === 0) return 0 // Avoid division by zero
+    return Math.round(price / days)
+  }
 
   const formatLimit = (limit: number) => {
     if (limit === 999999) return "Unlimited"
@@ -279,10 +258,10 @@ export default function PricingPage() {
 
   const getPlanIcon = (planKey: string) => {
     switch (planKey) {
-      case "365":
+      case "celestial":
+      case "immortal":
         return <Crown className="w-5 h-5 text-yellow-500" />
-      case "90":
-      case "60":
+      case "leviathan":
         return <Zap className="w-4 h-4 text-purple-500" />
       default:
         return null
@@ -303,16 +282,16 @@ export default function PricingPage() {
         </div>
 
         {/* Payment Section */}
-        {selectedPlan && (
+        {selectedPlanObject && ( // Use selectedPlanObject here
           <Card className="max-w-md mx-auto mb-8">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 Complete Payment
-                {getPlanIcon(selectedPlan)}
+                {getPlanIcon(selectedPlanObject.key)}
               </CardTitle>
               <CardDescription>
-                {PRICING.LIST[selectedPlan].name} - {formatLimit(PRICING.LIST[selectedPlan].limit)} requests for{" "}
-                {PRICING.LIST[selectedPlan].duration}
+                {selectedPlanObject.name} - {formatLimit(selectedPlanObject.limit)} requests for{" "}
+                {selectedPlanObject.duration}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -321,16 +300,15 @@ export default function PricingPage() {
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="font-medium flex items-center gap-2">
-                      {PRICING.LIST[selectedPlan].name}
-                      {getPlanIcon(selectedPlan)}
+                      {selectedPlanObject.name}
+                      {getPlanIcon(selectedPlanObject.key)}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {formatLimit(PRICING.LIST[selectedPlan].limit)} requests •{" "}
-                      {PRICING.LIST[selectedPlan].duration}
+                      {formatLimit(selectedPlanObject.limit)} requests • {selectedPlanObject.duration}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">Rp {PRICING.LIST[selectedPlan].price.toLocaleString()}</p>
+                    <p className="font-medium">Rp {selectedPlanObject.price.toLocaleString()}</p>
                   </div>
                 </div>
 
@@ -458,90 +436,99 @@ export default function PricingPage() {
 
         {/* Pricing Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {Object.entries(PRICING.LIST).map(([key, plan]) => (
-            <Card
-              key={key}
-              className={`flex flex-col relative ${
-                POPULAR_PLANS.includes(key)
-                  ? "border-blue-500 shadow-lg scale-105 z-10"
-                  : plan.unlimited && key === "365"
-                    ? "border-yellow-500 shadow-lg"
-                    : plan.unlimited
-                      ? "border-purple-500 shadow-md"
-                      : "border-border hover:border-primary transition-colors"
-              }`}
-            >
-              {POPULAR_PLANS.includes(key) && (
-                <div className="absolute -top-4 left-0 right-0 flex justify-center">
-                  <Badge className="bg-blue-500 text-white">Most Popular</Badge>
-                </div>
-              )}
-
-              {plan.unlimited && key === "365" && !POPULAR_PLANS.includes(key) && (
-                <div className="absolute -top-4 left-0 right-0 flex justify-center">
-                  <Badge className="bg-yellow-500 text-black">Elite</Badge>
-                </div>
-              )}
-
-              {plan.unlimited && key !== "365" && !POPULAR_PLANS.includes(key) && (
-                <div className="absolute -top-4 left-0 right-0 flex justify-center">
-                  <Badge className="bg-purple-500 text-white">Pro</Badge>
-                </div>
-              )}
-
-              <CardHeader className="text-center">
-                <CardTitle className="text-xl flex items-center justify-center gap-2">
-                  {plan.name}
-                  {getPlanIcon(key)}
-                </CardTitle>
-                <CardDescription>
-                  <div className="flex items-center justify-center gap-1 mb-2">
-                    {plan.unlimited ? (
-                      <Infinity className="w-4 h-4" />
-                    ) : (
-                      <span className="font-medium">{formatLimit(plan.limit)}</span>
-                    )}
-                    <span>{plan.unlimited ? "Unlimited" : "Requests"}</span>
+          {PRICING.LIST.map(
+            (
+              plan, // Iterate directly over the array
+            ) => (
+              <Card
+                key={plan.key} // Use plan.key as the key
+                className={`flex flex-col relative ${
+                  plan.isPopular
+                    ? "border-blue-500 shadow-lg scale-105 z-10"
+                    : plan.key === "celestial" || plan.key === "immortal"
+                      ? "border-yellow-500 shadow-lg"
+                      : plan.key === "leviathan"
+                        ? "border-purple-500 shadow-md"
+                        : "border-border hover:border-primary transition-colors"
+                }`}
+              >
+                {plan.isPopular && (
+                  <div className="absolute -top-4 left-0 right-0 flex justify-center">
+                    <Badge className="bg-blue-500 text-white">Most Popular</Badge>
                   </div>
-                  Active for {plan.duration}
-                </CardDescription>
-                <div className="mt-4">
-                  <span className="text-3xl font-bold">Rp {plan.price.toLocaleString()}</span>
-                  <div className="text-sm text-muted-foreground mt-1">
-                    ~Rp {getPricePerDay(plan.price, plan.days).toLocaleString()}/day
-                  </div>
-                </div>
-              </CardHeader>
+                )}
 
-              <CardContent className="flex-1 space-y-4">
-                <ul className="space-y-2 text-sm">
-                  {PLAN_FEATURES[key as keyof typeof PLAN_FEATURES]?.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-500 shrink-0" />
-                      <span>{feature}</span>
-                    </li>
+                {plan.key === "celestial" ||
+                  (plan.key === "immortal" && !plan.isPopular && (
+                    <div className="absolute -top-4 left-0 right-0 flex justify-center">
+                      <Badge className="bg-yellow-500 text-black">Elite</Badge>
+                    </div>
                   ))}
-                </ul>
 
-                <Button
-                  className="w-full"
-                  variant={
-                    POPULAR_PLANS.includes(key)
-                      ? "default"
-                      : key === "365"
-                        ? "secondary"
-                        : plan.unlimited
+                {plan.key === "leviathan" && !plan.isPopular && (
+                  <div className="absolute -top-4 left-0 right-0 flex justify-center">
+                    <Badge className="bg-purple-500 text-white">Pro</Badge>
+                  </div>
+                )}
+
+                <CardHeader className="text-center">
+                  <CardTitle className="text-xl flex items-center justify-center gap-2">
+                    {plan.name}
+                    {getPlanIcon(plan.key)}
+                  </CardTitle>
+                  <CardDescription>
+                    <div className="flex items-center justify-center gap-1 mb-2">
+                      {plan.unlimited ? (
+                        <Infinity className="w-4 h-4" />
+                      ) : (
+                        <span className="font-medium">{formatLimit(plan.limit)}</span>
+                      )}
+                      <span>{plan.unlimited ? "Unlimited" : "Requests"}</span>
+                    </div>
+                    Active for {plan.duration}
+                  </CardDescription>
+                  <div className="mt-4">
+                    <span className="text-3xl font-bold">Rp {plan.price.toLocaleString()}</span>
+                    <div className="text-sm text-muted-foreground mt-1">
+                      ~Rp {getPricePerDay(plan.price, plan.days).toLocaleString()}/day
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="flex-1 space-y-4">
+                  <ul className="space-y-2 text-sm">
+                    {plan.features?.map(
+                      (
+                        feature, // Use plan.features directly
+                      ) => (
+                        <li key={feature} className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-500 shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ),
+                    )}
+                  </ul>
+
+                  <Button
+                    className="w-full"
+                    variant={
+                      plan.isPopular
+                        ? "default"
+                        : plan.key === "celestial" || plan.key === "immortal"
                           ? "secondary"
-                          : "outline"
-                  }
-                  onClick={() => handlePlanSelect(key as PlanType)}
-                  disabled={selectedPlan !== null || confirmPlan !== null}
-                >
-                  {user ? "Select Plan" : "Login to Order"}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                          : plan.key === "leviathan"
+                            ? "secondary"
+                            : "outline"
+                    }
+                    onClick={() => handlePlanSelect(plan.key as PlanType)}
+                    disabled={selectedPlan !== null || confirmPlan !== null}
+                  >
+                    {user ? "Select Plan" : "Login to Order"}
+                  </Button>
+                </CardContent>
+              </Card>
+            ),
+          )}
         </div>
 
         {/* Confirmation Dialog */}
@@ -550,35 +537,38 @@ export default function PricingPage() {
             <AlertDialogHeader>
               <AlertDialogTitle className="flex items-center gap-2">
                 Confirm Subscription
-                {confirmPlan && getPlanIcon(confirmPlan)}
+                {confirmPlanObject && getPlanIcon(confirmPlanObject.key)}
               </AlertDialogTitle>
               <AlertDialogDescription className="space-y-4">
-                {confirmPlan && (
+                {confirmPlanObject && ( // Use confirmPlanObject here
                   <>
                     <div className="flex justify-between items-center border-b pb-2">
                       <div>
                         <h3 className="font-medium flex items-center gap-2">
-                          {PRICING.LIST[confirmPlan].name}
-                          {getPlanIcon(confirmPlan)}
+                          {confirmPlanObject.name}
+                          {getPlanIcon(confirmPlanObject.key)}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {formatLimit(PRICING.LIST[confirmPlan].limit)} requests • Active for{" "}
-                          {PRICING.LIST[confirmPlan].duration}
+                          {formatLimit(confirmPlanObject.limit)} requests • Active for {confirmPlanObject.duration}
                         </p>
                       </div>
                       <div className="text-right">
-                        <p className="font-medium">Rp {PRICING.LIST[confirmPlan].price.toLocaleString()}</p>
+                        <p className="font-medium">Rp {confirmPlanObject.price.toLocaleString()}</p>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Features included:</p>
                       <ul className="text-sm space-y-1">
-                        {PLAN_FEATURES[confirmPlan]?.map((feature) => (
-                          <li key={feature} className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-green-500 shrink-0" />
-                            <span>{feature}</span>
-                          </li>
-                        ))}
+                        {confirmPlanObject.features?.map(
+                          (
+                            feature, // Use confirmPlanObject.features
+                          ) => (
+                            <li key={feature} className="flex items-center gap-2">
+                              <Check className="h-4 w-4 text-green-500 shrink-0" />
+                              <span>{feature}</span>
+                            </li>
+                          ),
+                        )}
                       </ul>
                     </div>
                     <p className="text-sm">
