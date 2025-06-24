@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Loader2, Github } from "lucide-react"
 import Link from "next/link"
+import { signIn } from "next-auth/react" // Import signIn from next-auth/react
 
 export default function LoginPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -22,42 +22,29 @@ export default function LoginPage() {
     setError(null)
 
     const formData = new FormData(event.currentTarget)
+    const username = formData.get("username") as string
+    const password = formData.get("password") as string
 
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          username: formData.get("username"),
-          password: formData.get("password"),
-        }),
-      })
+    const result = await signIn("credentials", {
+      username,
+      password,
+      redirect: false, 
+    })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.message || "Login failed")
-      }
-
+    if (result?.error) {
+      setError(result.error)
+    } else if (result?.ok) {
       router.push("/playground")
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
-    } finally {
-      setIsLoading(false)
     }
+    setIsLoading(false)
   }
 
   const handleSocialLogin = async (provider: "google" | "github") => {
-    setLoading(true)
     setError(null)
-
-    /*await signIn(provider, {
+    await signIn(provider, {
       callbackUrl: "/playground",
-    })*/
+    })
   }
-  
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-black px-4">
@@ -73,7 +60,7 @@ export default function LoginPage() {
               variant="outline"
               className="w-full font-medium"
               onClick={() => handleSocialLogin("github")}
-              disabled={loading || isLoading}
+              disabled={isLoading}
             >
               <Github className="mr-2 h-4 w-4" />
               GitHub
@@ -82,7 +69,7 @@ export default function LoginPage() {
               variant="outline"
               className="w-full font-medium"
               onClick={() => handleSocialLogin("google")}
-              disabled={loading || isLoading}
+              disabled={isLoading}
             >
               <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
                 <path
@@ -114,7 +101,7 @@ export default function LoginPage() {
               <span className="bg-background px-2 text-muted-foreground">or</span>
             </div>
           </div>
-          
+
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && <div className="bg-black text-red-500 px-4 py-2 rounded-md text-sm">{error}</div>}
             <div className="space-y-2">
@@ -125,7 +112,7 @@ export default function LoginPage() {
               <Label htmlFor="password">Password</Label>
               <Input id="password" name="password" placeholder="Enter your password" type="password" required />
             </div>
-            <Button type="submit" className="w-full bg-blue-600 text-black hover:bg-blue-700" disabled={isLoading || loading}>
+            <Button type="submit" className="w-full bg-blue-600 text-black hover:bg-blue-700" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
