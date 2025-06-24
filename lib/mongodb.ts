@@ -1,46 +1,47 @@
-// lib/mongodb.ts
-import { MongoClient, type Db } from "mongodb"
+import { MongoClient, ServerApiVersion } from "mongodb"
 
-const uri = process.env.MONGODB_URI!
-const dbName = "arincy"
+const uri = process.env.MONGODB_URI || ""
 
-if (!uri) throw new Error("Please define MONGODB_URI in your environment variables")
-
-const options = {}
-
-let client: MongoClient
-let clientPromise: Promise<MongoClient>
-let cachedDb: Db | null = null
-
-declare global {
-  var _mongoClientPromise: Promise<MongoClient>
+if (!uri) {
+  throw new Error("Please add your MONGODB_URI to .env.local")
 }
 
+let client: MongoClient | undefined
+let clientPromise: Promise<MongoClient>
+
 if (process.env.NODE_ENV === "development") {
-  if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, options)
-    global._mongoClientPromise = client.connect()
+  const globalWithMongo = global as typeof globalThis & {
+    _mongoClientPromise?: Promise<MongoClient>
   }
-  clientPromise = global._mongoClientPromise
+  if (!globalWithMongo._mongoClientPromise) {
+    client = new MongoClient(uri, {
+      serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+      },
+    })
+    globalWithMongo._mongoClientPromise = client.connect()
+  }
+  clientPromise = globalWithMongo._mongoClientPromise
 } else {
-  client = new MongoClient(uri, options)
+  client = new MongoClient(uri, {
+    serverApi: {
+      version: ServerApiVersion.v1,
+      strict: true,
+      deprecationErrors: true,
+    },
+  })
   clientPromise = client.connect()
 }
 
-export default clientPromise
-
-// Helper function to get database connection
-export async function getDatabase() {
-  if (cachedDb) return cachedDb
-
-  const client = await clientPromise
-  const db = client.db(dbName)
-  cachedDb = db
-  return db
+export async function connectToDatabase() {
+  return clientPromise
 }
 
-// Helper function to get users collection
 export async function getUsersCollection() {
-  const db = await getDatabase()
+  const db = (await clientPromise).db("restauth") 
   return db.collection("users")
 }
+
+export default clientPromise 
