@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { CONFIG } from "@/config/setting"
+import Providers from "./providers" 
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -19,7 +20,6 @@ export const metadata: Metadata = {
     description: CONFIG.APP.DESCRIPTION,
     type: "website",
   },
-    generator: 'v0.dev'
 }
 
 export default function RootLayout({
@@ -30,7 +30,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        {children}
+        <Providers>
+          {" "}
+          {/* Wrap children with Providers */}
+          {children}
+        </Providers>
       </body>
     </html>
   )
