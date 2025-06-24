@@ -1,7 +1,6 @@
 import { compare, hash } from "bcrypt"
 import { getUsersCollection } from "./mongodb"
 import crypto from "crypto"
-import { ObjectId } from "mongodb"
 
 // Hash password
 export async function hashPassword(password: string): Promise<string> {
@@ -130,28 +129,4 @@ export async function hasReachedDailyLimit(apiKey: string, limit = 100) {
   }
 
   return user.usage >= (user.limit || limit)
-}
-
-export async function getUserFromSession(request: Request) {
-  const cookies = request.headers.get("cookie") || ""
-  const sessionCookie = cookies
-    .split(";")
-    .find((c) => c.trim().startsWith("user_session="))
-    ?.split("=")[1]
-
-  if (!sessionCookie) {
-    return null
-  }
-
-  try {
-    const session = JSON.parse(decodeURIComponent(sessionCookie))
-    const users = await getUsersCollection()
-
-    const user = await users.findOne({ _id: new ObjectId(session.id) })
-
-    return user
-  } catch (error) {
-    console.error("Error getting user from session:", error)
-    return null
-  }
 }
